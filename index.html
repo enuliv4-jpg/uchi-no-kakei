@@ -250,6 +250,19 @@ function InputTab({ data, mutate, onSaved }) {
 
   const total = lines.reduce((s, l) => s + (Number(l.amount) || 0), 0);
 
+  // 過去の入力からよく使うお店を集計（使用回数順・最大8件）
+  const storeSuggestions = useMemo(() => {
+    const counts = {};
+    data.expenses.forEach((e) => {
+      const s = (e.store || "").trim();
+      if (s) counts[s] = (counts[s] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([s]) => s);
+  }, [data.expenses]);
+
   const setLine = (i, patch) =>
     setLines((ls) => ls.map((l, j) => (j === i ? { ...l, ...patch } : l)));
   const addLine = () => setLines((ls) => [...ls, { name: "", amount: "", owner: "home" }]);
@@ -318,6 +331,23 @@ function InputTab({ data, mutate, onSaved }) {
           onChange={(e) => setStore(e.target.value)}
           style={{ ...S.input, marginTop: 10 }}
         />
+        {storeSuggestions.length > 0 && (
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
+            {storeSuggestions.map((s) => (
+              <button
+                key={s}
+                onClick={() => setStore(s)}
+                style={{
+                  ...S.chip(store === s, "#1B2430", "#EEF1F5"),
+                  padding: "5px 12px",
+                  fontSize: 13,
+                }}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div style={S.card}>
@@ -428,6 +458,16 @@ function HistoryTab({ data, mutate }) {
   const del = async (id) => {
     await mutate((d) => ({ ...d, expenses: d.expenses.filter((e) => e.id !== id) }));
   };
+  const delLine = async (expId, idx) => {
+    await mutate((d) => ({
+      ...d,
+      expenses: d.expenses
+        .map((e) =>
+          e.id === expId ? { ...e, lines: e.lines.filter((_, j) => j !== idx) } : e
+        )
+        .filter((e) => e.lines.length > 0),
+    }));
+  };
 
   if (sorted.length === 0)
     return (
@@ -477,12 +517,32 @@ function HistoryTab({ data, mutate }) {
                 {e.lines.map((l, i) => (
                   <div
                     key={i}
-                    style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", fontSize: 14 }}
+                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 0", fontSize: 14 }}
                   >
                     <span>
                       <OwnerDot owner={l.owner} /> <span style={{ marginLeft: 6 }}>{l.name}</span>
                     </span>
-                    <span style={S.num}>{fmtYen(l.amount)}</span>
+                    <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <span style={S.num}>{fmtYen(l.amount)}</span>
+                      <button
+                        onClick={() => delLine(e.id, i)}
+                        aria-label="この行を削除"
+                        style={{
+                          border: "1px solid #E4C7C7",
+                          background: "#FBF1F1",
+                          color: "#B04444",
+                          borderRadius: 6,
+                          width: 26,
+                          height: 26,
+                          fontSize: 13,
+                          lineHeight: "24px",
+                          cursor: "pointer",
+                          padding: 0,
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </span>
                   </div>
                 ))}
                 <button
