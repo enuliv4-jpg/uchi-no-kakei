@@ -16,9 +16,12 @@
 <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
 <style>
-  html, body { margin: 0; padding: 0; background: #F2F4F6; }
-  * { -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; background: #EFF1F4; }
+  * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
   input, select, button { font-family: inherit; }
+  input:focus, select:focus { outline: 2px solid #1B2430; outline-offset: -1.5px; border-radius: 12px; }
+  button { transition: opacity .12s ease, transform .12s ease; }
+  button:active { opacity: .75; transform: scale(.98); }
 </style>
 </head>
 <body>
@@ -142,60 +145,63 @@ const S = {
   page: {
     fontFamily:
       "'Hiragino Kaku Gothic ProN','Hiragino Sans','Noto Sans JP','Yu Gothic',sans-serif",
-    background: "#F2F4F6",
+    background: "#EFF1F4",
     minHeight: "100vh",
     color: "#1B2430",
     maxWidth: 480,
     margin: "0 auto",
-    paddingBottom: 96,
+    paddingBottom: 118,
   },
   card: {
     background: "#FFFFFF",
-    borderRadius: 14,
-    padding: 16,
-    margin: "12px 12px 0",
-    boxShadow: "0 1px 3px rgba(20,30,50,0.06)",
+    borderRadius: 18,
+    padding: 18,
+    margin: "14px 14px 0",
+    border: "1px solid rgba(20,30,50,0.06)",
+    boxShadow: "0 1px 2px rgba(16,24,40,0.04), 0 10px 28px -16px rgba(16,24,40,0.14)",
   },
   label: {
     fontSize: 11,
-    fontWeight: 600,
-    letterSpacing: "0.08em",
-    color: "#7A8494",
-    marginBottom: 6,
+    fontWeight: 700,
+    letterSpacing: "0.12em",
+    color: "#8A93A3",
+    marginBottom: 8,
   },
   input: {
     width: "100%",
     boxSizing: "border-box",
-    border: "1.5px solid #DDE2E9",
-    borderRadius: 10,
-    padding: "10px 12px",
+    border: "1.5px solid transparent",
+    borderRadius: 12,
+    padding: "11px 13px",
     fontSize: 16,
-    background: "#FBFCFD",
+    background: "#F1F3F6",
     outline: "none",
   },
   btnPrimary: {
     width: "100%",
-    background: "#1B2430",
+    background: "linear-gradient(180deg, #232E3F 0%, #141B26 100%)",
     color: "#fff",
     border: "none",
-    borderRadius: 12,
-    padding: "14px 0",
+    borderRadius: 14,
+    padding: "15px 0",
     fontSize: 16,
     fontWeight: 700,
+    letterSpacing: "0.02em",
     cursor: "pointer",
+    boxShadow: "0 8px 18px -8px rgba(20,30,50,0.5)",
   },
   chip: (active, color, bg) => ({
     padding: "7px 14px",
     borderRadius: 999,
     fontSize: 14,
-    fontWeight: 600,
-    border: active ? `2px solid ${color}` : "2px solid #E3E7ED",
-    background: active ? bg : "#fff",
-    color: active ? color : "#5A6472",
+    fontWeight: active ? 700 : 600,
+    border: active ? `1.5px solid ${color}` : "1.5px solid #E4E8EE",
+    background: active ? bg : "#FFFFFF",
+    color: active ? color : "#6A7382",
     cursor: "pointer",
     whiteSpace: "nowrap",
   }),
-  num: { fontVariantNumeric: "tabular-nums" },
+  num: { fontVariantNumeric: "tabular-nums", letterSpacing: "-0.01em" },
 };
 
 function OwnerChips({ value, onChange, size }) {
@@ -355,7 +361,7 @@ function InputTab({ data, mutate, onSaved }) {
         {lines.map((l, i) => (
           <div
             key={i}
-            style={{ border: "1px solid #E8ECF1", borderRadius: 10, padding: 10, marginBottom: 8 }}
+            style={{ border: "1px solid #EBEEF2", borderRadius: 14, padding: 12, marginBottom: 8, background: "#FBFCFD" }}
           >
             <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
               <input
@@ -391,8 +397,8 @@ function InputTab({ data, mutate, onSaved }) {
           style={{
             width: "100%",
             background: "#F1F4F8",
-            border: "1.5px dashed #C6CFDA",
-            borderRadius: 10,
+            border: "1.5px dashed #C9D2DD",
+            borderRadius: 12,
             padding: "9px 0",
             fontSize: 14,
             fontWeight: 600,
@@ -571,14 +577,15 @@ function HistoryTab({ data, mutate }) {
 
 // ---------- 精算タブ ----------
 const navBtn = {
-  border: "1.5px solid #DDE2E9",
+  border: "1px solid rgba(20,30,50,0.1)",
   background: "#fff",
-  borderRadius: 10,
-  width: 36,
-  height: 36,
+  borderRadius: 12,
+  width: 38,
+  height: 38,
   fontSize: 18,
   cursor: "pointer",
   color: "#1B2430",
+  boxShadow: "0 2px 6px -2px rgba(16,24,40,0.15)",
 };
 
 function SettleTab({ data, mutate }) {
@@ -633,16 +640,21 @@ function SettleTab({ data, mutate }) {
       <div
         style={{
           ...S.card,
-          background: settled ? "#3C6E51" : net >= 0 ? "#1B2430" : "#5A2440",
+          background: settled
+            ? "linear-gradient(160deg, #2F5C44 0%, #3C6E51 100%)"
+            : net >= 0
+            ? "linear-gradient(160deg, #161D28 0%, #2A3550 100%)"
+            : "linear-gradient(160deg, #45182B 0%, #5A2440 100%)",
+          border: "none",
           color: "#fff",
           textAlign: "center",
-          padding: "22px 16px",
+          padding: "24px 16px",
         }}
       >
-        <div style={{ fontSize: 12, letterSpacing: "0.1em", opacity: 0.8 }}>
+        <div style={{ fontSize: 12, letterSpacing: "0.14em", opacity: 0.8 }}>
           {settled ? "✓ 精算済み" : net >= 0 ? "みさに請求する額" : "みさに支払う額"}
         </div>
-        <div style={{ ...S.num, fontSize: 38, fontWeight: 800, margin: "6px 0 4px" }}>
+        <div style={{ ...S.num, fontSize: 40, fontWeight: 800, margin: "6px 0 4px", letterSpacing: "-0.02em" }}>
           {fmtYen(Math.abs(net))}
         </div>
         <div style={{ fontSize: 12, opacity: 0.65, marginBottom: 14 }}>
@@ -678,7 +690,7 @@ function SettleTab({ data, mutate }) {
             {OWNERS.map((o) => (
               <div
                 key={o.id}
-                style={{ flex: 1, background: o.bg, borderRadius: 10, padding: "8px 0", textAlign: "center" }}
+                style={{ flex: 1, background: o.bg, borderRadius: 12, padding: "9px 0", textAlign: "center" }}
               >
                 <div style={{ fontSize: 11, fontWeight: 700, color: o.color }}>{o.label}</div>
                 <div style={{ ...S.num, fontSize: 14, fontWeight: 800, color: o.color }}>
@@ -824,7 +836,7 @@ function SettingsTab({ data, mutate }) {
       <div style={S.card}>
         <div style={S.label}>支払い元と締め日</div>
         {data.cards.map((c) => (
-          <div key={c.id} style={{ border: "1px solid #E8ECF1", borderRadius: 10, padding: 10, marginBottom: 8 }}>
+          <div key={c.id} style={{ border: "1px solid #EBEEF2", borderRadius: 14, padding: 12, marginBottom: 8, background: "#FBFCFD" }}>
             <input
               value={c.name}
               onChange={(e) => updateCard(c.id, { name: e.target.value })}
@@ -987,12 +999,26 @@ function App() {
 
   return (
     <div style={S.page}>
-      <header style={{ padding: "calc(env(safe-area-inset-top, 0px) + 18px) 16px 4px", display: "flex", alignItems: "center", gap: 10 }}>
-        <img src="icon-192.png" alt="" style={{ width: 40, height: 40, borderRadius: 11 }} />
-        <div>
-          <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: "0.01em" }}>Uchi-no-Kakei</div>
-          <div style={{ fontSize: 11, color: "#7A8494", marginTop: 1 }}>
-            締め日どおりに集計・1レシートを負担者で分割
+      <header style={{ padding: "calc(env(safe-area-inset-top, 0px) + 14px) 14px 0" }}>
+        <div
+          style={{
+            background: "linear-gradient(135deg, #161D28 0%, #2A3550 100%)",
+            borderRadius: 20,
+            padding: "14px 16px",
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            boxShadow: "0 14px 30px -16px rgba(16,24,40,0.5)",
+          }}
+        >
+          <img src="icon-192.png" alt="" style={{ width: 42, height: 42, borderRadius: 12 }} />
+          <div>
+            <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: "0.02em", color: "#FFFFFF" }}>
+              Uchi-no-Kakei
+            </div>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", marginTop: 2 }}>
+              締め日どおりに集計・1レシートを負担者で分割
+            </div>
           </div>
         </div>
       </header>
@@ -1012,7 +1038,7 @@ function App() {
         <div
           style={{
             position: "fixed",
-            bottom: 90,
+            bottom: "calc(env(safe-area-inset-bottom, 0px) + 78px)",
             left: "50%",
             transform: "translateX(-50%)",
             background: "#1B2430",
@@ -1032,16 +1058,20 @@ function App() {
       <nav
         style={{
           position: "fixed",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          maxWidth: 480,
+          bottom: "calc(env(safe-area-inset-bottom, 0px) + 14px)",
+          left: 14,
+          right: 14,
+          maxWidth: 452,
           margin: "0 auto",
-          background: "#fff",
-          borderTop: "1px solid #E8ECF1",
+          background: "rgba(255,255,255,0.88)",
+          backdropFilter: "blur(16px)",
+          WebkitBackdropFilter: "blur(16px)",
+          border: "1px solid rgba(20,30,50,0.08)",
+          borderRadius: 999,
+          boxShadow: "0 16px 36px -16px rgba(16,24,40,0.4)",
           display: "flex",
+          padding: 5,
           zIndex: 10,
-          paddingBottom: "env(safe-area-inset-bottom, 0px)",
         }}
       >
         {TABS.map((t) => (
@@ -1050,13 +1080,13 @@ function App() {
             onClick={() => setTab(t.id)}
             style={{
               flex: 1,
-              padding: "13px 0 15px",
+              padding: "11px 0",
               border: "none",
-              background: "none",
+              borderRadius: 999,
+              background: tab === t.id ? "#1B2430" : "transparent",
+              color: tab === t.id ? "#FFFFFF" : "#6A7382",
               fontSize: 13,
-              fontWeight: tab === t.id ? 800 : 600,
-              color: tab === t.id ? "#1B2430" : "#9AA3B0",
-              borderTop: tab === t.id ? "2.5px solid #1B2430" : "2.5px solid transparent",
+              fontWeight: 700,
               cursor: "pointer",
             }}
           >
