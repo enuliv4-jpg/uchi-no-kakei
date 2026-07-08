@@ -10,18 +10,24 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-title" content="Uchi-no-Kakei" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="theme-color" content="#14181F" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="theme-color" content="#FFC838" />
 <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
 <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
 <style>
-  html, body { margin: 0; padding: 0; background: #EFF1F4; }
+  html, body {
+    margin: 0; padding: 0;
+    background: linear-gradient(180deg, #BFE3F7 0%, #EAF6FE 240px, #FFF8EA 100%);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
   * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
   input, select, button { font-family: inherit; }
-  input:focus, select:focus { outline: 2px solid #1B2430; outline-offset: -1.5px; border-radius: 12px; }
-  button { transition: opacity .12s ease, transform .12s ease; }
-  button:active { opacity: .75; transform: scale(.98); }
+  input:focus, select:focus { outline: 3px solid #FFC838; outline-offset: -1px; border-radius: 12px; }
+  button { transition: transform .1s ease; }
+  button:active { transform: scale(.96); }
+  ::-webkit-scrollbar { display: none; }
 </style>
 </head>
 <body>
@@ -41,39 +47,55 @@
   setTimeout(function() {
     var el = document.getElementById("boot");
     if (el && el.parentNode && el.parentNode.children.length === 1) {
-      el.innerHTML += "<br><br><b>20秒経っても起動しません。</b><br>ライブラリの読み込みに失敗している可能性があります。<br>Wi-Fi環境で再読み込みするか、この画面のスクショをClaudeに送ってください。";
+      el.innerHTML += "<br><br><b>20秒経っても起動しません。</b><br>Wi-Fi環境で再読み込みするか、この画面のスクショをClaudeに送ってください。";
     }
   }, 20000);
 </script>
 <script type="text/babel" data-presets="react">
 
 // ================================================================
-// ★★★ ここを書き換えてください（README-setup.md 手順3参照）★★★
+// 設定（Supabase接続情報・設定済み）
 // ================================================================
 const CONFIG = {
-  SUPABASE_URL: "https://itemryixfrhltzviwsim.supabase.co",   // 例: https://abcdefgh.supabase.co
+  SUPABASE_URL: "https://itemryixfrhltzviwsim.supabase.co",
   SUPABASE_ANON_KEY: "sb_publishable_xfgcViAYVnN2F-EfEhHo8Q_ben2GYHT",
-  // ↓この家計簿の「鍵」。このままでOK（変更する場合は夫婦で同じ値に）
   HOUSEHOLD_ID: "8561b7f7-935c-463e-8b8e-f97210b6ce7b",
 };
 // ================================================================
 
 const { useState, useEffect, useCallback, useMemo } = React;
 
+// ---------- デザイントークン（トイボックス風） ----------
+const INK = "#22324A";
+const YELLOW = "#FFC838";
+
 // ---------- 定数 ----------
 const OWNERS = [
-  { id: "home", label: "家", color: "#0E7C66", bg: "#E2F4EF" },
-  { id: "me", label: "けんと", color: "#3B4FA0", bg: "#E8ECFA" },
-  { id: "wife", label: "みさ", color: "#B0447A", bg: "#FAE7F0" },
+  { id: "home", label: "家", color: "#2E9E44", bg: "#E3F6E7" },
+  { id: "me", label: "けんと", color: "#2E7CD6", bg: "#E4F0FD" },
+  { id: "wife", label: "みさ", color: "#E0508F", bg: "#FDE7F1" },
 ];
 const ownerOf = (id) => OWNERS.find((o) => o.id === id) || OWNERS[0];
+
+const GENRES = [
+  { id: "food", label: "食費", emoji: "🍙", color: "#D97706", bg: "#FEF3C7" },
+  { id: "daily", label: "日用品", emoji: "🧺", color: "#2E7CD6", bg: "#E4F0FD" },
+  { id: "social", label: "交際費", emoji: "🍻", color: "#7C3AED", bg: "#EDE9FE" },
+  { id: "misc", label: "雑費", emoji: "📦", color: "#64748B", bg: "#EEF2F7" },
+  { id: "utility", label: "光熱費", emoji: "💡", color: "#EA580C", bg: "#FFEDD5" },
+  { id: "water", label: "水道代", emoji: "🚰", color: "#0284C7", bg: "#E0F2FE" },
+  { id: "rent", label: "家賃", emoji: "🏠", color: "#059669", bg: "#D1FAE5" },
+];
+const genreOf = (id) => GENRES.find((g) => g.id === id) || GENRES[3];
+
+// よく使うお店の初期候補（履歴で2回以上使ったお店も自動で追加されます）
+const STORE_SEEDS = ["ライフ", "サンディ", "コープ", "ココカラファイン", "無印良品", "ユニクロ", "ダイソー"];
 
 const DEFAULT_DATA = {
   cards: [
     { id: "c1", name: "楽天カード①", closingDay: 27, cardOwner: "me" },
     { id: "c2", name: "三井住友", closingDay: 27, cardOwner: "me" },
     { id: "c3", name: "楽天カード②", closingDay: 27, cardOwner: "wife" },
-    { id: "bank", name: "口座引落（家賃・光熱費など）", closingDay: 31, cardOwner: "me" },
   ],
   expenses: [],
   presets: [],
@@ -102,16 +124,32 @@ function billingPeriod(closingDay, y, m) {
 }
 const inPeriod = (iso, p) => iso >= p.start && iso <= p.end;
 
-// ---------- Supabase ストレージ ----------
-const configured = () =>
-  CONFIG.SUPABASE_URL.startsWith("https://") && CONFIG.SUPABASE_ANON_KEY.length > 20 && !CONFIG.SUPABASE_ANON_KEY.startsWith("ここに");
+// ---------- データ移行 ----------
+function migrate(d) {
+  const out = { ...DEFAULT_DATA, ...d };
+  out.settlements = d.settlements || {};
+  // 口座引落は廃止
+  out.cards = (d.cards || DEFAULT_DATA.cards).filter((c) => c.id !== "bank");
+  if (out.cards.length === 0) out.cards = DEFAULT_DATA.cards;
+  // 3か月より前の記録は自動整理（今月＋過去2か月を保持）
+  const n = new Date();
+  const cutoff = toISO(new Date(n.getFullYear(), n.getMonth() - 2, 1));
+  out.expenses = (d.expenses || [])
+    .filter((e) => e.date >= cutoff)
+    .map((e) => ({
+      ...e,
+      lines: e.lines.map((l) => ({ ...l, genre: l.genre || "misc" })),
+    }));
+  out.presets = (d.presets || []).map((p) => ({ ...p, genre: p.genre || "misc" }));
+  return out;
+}
 
+// ---------- Supabase ストレージ ----------
 async function rpc(fn, body) {
   const headers = {
     "Content-Type": "application/json",
     apikey: CONFIG.SUPABASE_ANON_KEY,
   };
-  // 旧形式(JWT)キーの場合のみAuthorizationヘッダーを付ける
   if (CONFIG.SUPABASE_ANON_KEY.startsWith("eyJ")) {
     headers.Authorization = `Bearer ${CONFIG.SUPABASE_ANON_KEY}`;
   }
@@ -127,7 +165,7 @@ async function rpc(fn, body) {
 
 async function loadData() {
   const result = await rpc("get_kakei", { hid: CONFIG.HOUSEHOLD_ID });
-  if (result) return { ...DEFAULT_DATA, ...result };
+  if (result) return migrate(result);
   return DEFAULT_DATA;
 }
 async function saveData(data) {
@@ -144,64 +182,73 @@ async function saveData(data) {
 const S = {
   page: {
     fontFamily:
-      "'Hiragino Kaku Gothic ProN','Hiragino Sans','Noto Sans JP','Yu Gothic',sans-serif",
-    background: "#EFF1F4",
+      "'Hiragino Maru Gothic ProN','ui-rounded','Arial Rounded MT Bold','Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif",
     minHeight: "100vh",
-    color: "#1B2430",
+    color: INK,
     maxWidth: 480,
     margin: "0 auto",
-    paddingBottom: 118,
+    paddingBottom: 122,
   },
   card: {
     background: "#FFFFFF",
-    borderRadius: 18,
-    padding: 18,
+    borderRadius: 20,
+    padding: 16,
     margin: "14px 14px 0",
-    border: "1px solid rgba(20,30,50,0.06)",
-    boxShadow: "0 1px 2px rgba(16,24,40,0.04), 0 10px 28px -16px rgba(16,24,40,0.14)",
+    border: `2px solid ${INK}`,
+    boxShadow: "5px 5px 0 rgba(34,50,74,0.15)",
   },
   label: {
     fontSize: 11,
     fontWeight: 700,
-    letterSpacing: "0.12em",
-    color: "#8A93A3",
+    letterSpacing: "0.1em",
+    color: "#7A8698",
     marginBottom: 8,
   },
   input: {
     width: "100%",
     boxSizing: "border-box",
-    border: "1.5px solid transparent",
+    border: "2px solid #D8E2EE",
     borderRadius: 12,
-    padding: "11px 13px",
+    padding: "10px 12px",
     fontSize: 16,
-    background: "#F1F3F6",
+    background: "#F7FAFD",
     outline: "none",
+    color: INK,
   },
   btnPrimary: {
     width: "100%",
-    background: "linear-gradient(180deg, #232E3F 0%, #141B26 100%)",
-    color: "#fff",
-    border: "none",
-    borderRadius: 14,
-    padding: "15px 0",
+    background: `linear-gradient(180deg, #FFD84D 0%, ${YELLOW} 100%)`,
+    color: INK,
+    border: `2.5px solid ${INK}`,
+    borderRadius: 16,
+    padding: "14px 0",
     fontSize: 16,
-    fontWeight: 700,
-    letterSpacing: "0.02em",
+    fontWeight: 800,
+    letterSpacing: "0.04em",
     cursor: "pointer",
-    boxShadow: "0 8px 18px -8px rgba(20,30,50,0.5)",
+    boxShadow: "4px 4px 0 rgba(34,50,74,0.25)",
   },
   chip: (active, color, bg) => ({
     padding: "7px 14px",
     borderRadius: 999,
     fontSize: 14,
-    fontWeight: active ? 700 : 600,
-    border: active ? `1.5px solid ${color}` : "1.5px solid #E4E8EE",
+    fontWeight: active ? 800 : 600,
+    border: active ? `2px solid ${color}` : "2px solid #D8E2EE",
     background: active ? bg : "#FFFFFF",
-    color: active ? color : "#6A7382",
+    color: active ? color : "#7A8698",
     cursor: "pointer",
     whiteSpace: "nowrap",
   }),
   num: { fontVariantNumeric: "tabular-nums", letterSpacing: "-0.01em" },
+  dangerBtn: {
+    border: "2px solid #E9B8B8",
+    background: "#FDF1F1",
+    color: "#C24A4A",
+    borderRadius: 10,
+    fontSize: 13,
+    fontWeight: 700,
+    cursor: "pointer",
+  },
 };
 
 function OwnerChips({ value, onChange, size }) {
@@ -213,7 +260,7 @@ function OwnerChips({ value, onChange, size }) {
           onClick={() => onChange(o.id)}
           style={{
             ...S.chip(value === o.id, o.color, o.bg),
-            padding: size === "sm" ? "4px 10px" : "7px 14px",
+            padding: size === "sm" ? "4px 11px" : "7px 14px",
             fontSize: size === "sm" ? 13 : 14,
           }}
         >
@@ -230,17 +277,38 @@ function OwnerDot({ owner }) {
     <span
       style={{
         display: "inline-block",
-        minWidth: 22,
+        minWidth: 24,
         textAlign: "center",
         fontSize: 11,
-        fontWeight: 700,
+        fontWeight: 800,
         color: o.color,
         background: o.bg,
-        borderRadius: 6,
-        padding: "2px 5px",
+        border: `1.5px solid ${o.color}`,
+        borderRadius: 8,
+        padding: "2px 6px",
       }}
     >
       {o.label}
+    </span>
+  );
+}
+
+function GenreTag({ genre }) {
+  const g = genreOf(genre);
+  return (
+    <span
+      style={{
+        fontSize: 11,
+        fontWeight: 800,
+        color: g.color,
+        background: g.bg,
+        border: `1.5px solid ${g.color}`,
+        borderRadius: 8,
+        padding: "2px 6px",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {g.emoji}{g.label}
     </span>
   );
 }
@@ -250,41 +318,52 @@ function InputTab({ data, mutate, onSaved }) {
   const [date, setDate] = useState(todayISO());
   const [cardId, setCardId] = useState(data.cards[0] ? data.cards[0].id : "");
   const [store, setStore] = useState("");
-  const [lines, setLines] = useState([{ name: "", amount: "", owner: "home" }]);
+  const emptyLine = () => ({ name: "", amount: "", owner: "home", genre: "food" });
+  const [lines, setLines] = useState([emptyLine()]);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
 
   const total = lines.reduce((s, l) => s + (Number(l.amount) || 0), 0);
 
-  // 過去の入力からよく使うお店を集計（使用回数順・最大8件）
+  // お店候補: 2回以上使ったお店（回数順）＋定番リスト
   const storeSuggestions = useMemo(() => {
     const counts = {};
     data.expenses.forEach((e) => {
       const s = (e.store || "").trim();
       if (s) counts[s] = (counts[s] || 0) + 1;
     });
-    return Object.entries(counts)
+    const frequent = Object.entries(counts)
+      .filter(([, c]) => c >= 2)
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 8)
       .map(([s]) => s);
+    const merged = [...frequent];
+    STORE_SEEDS.forEach((s) => {
+      if (!merged.includes(s)) merged.push(s);
+    });
+    return merged.slice(0, 10);
   }, [data.expenses]);
 
   const setLine = (i, patch) =>
     setLines((ls) => ls.map((l, j) => (j === i ? { ...l, ...patch } : l)));
-  const addLine = () => setLines((ls) => [...ls, { name: "", amount: "", owner: "home" }]);
+  const addLine = () => setLines((ls) => [...ls, emptyLine()]);
   const removeLine = (i) => setLines((ls) => ls.filter((_, j) => j !== i));
   const addPreset = (p) =>
     setLines((ls) => {
       const base = ls.length === 1 && !ls[0].name && !ls[0].amount ? [] : ls;
       return [
         ...base,
-        { name: p.name, amount: p.amount > 0 ? String(p.amount) : "", owner: p.owner },
+        {
+          name: p.name,
+          amount: p.amount > 0 ? String(p.amount) : "",
+          owner: p.owner,
+          genre: p.genre || "misc",
+        },
       ];
     });
 
   const save = async () => {
     const valid = lines.filter((l) => Number(l.amount) > 0);
-    if (!cardId) return setMsg("支払い元を選んでください");
+    if (!cardId) return setMsg("カードを選んでください");
     if (valid.length === 0) return setMsg("金額を入力してください");
     setSaving(true);
     const expense = {
@@ -293,16 +372,17 @@ function InputTab({ data, mutate, onSaved }) {
       cardId,
       store: store.trim(),
       lines: valid.map((l) => ({
-        name: l.name.trim() || "（品名なし）",
+        name: l.name.trim(),
         amount: Number(l.amount),
         owner: l.owner,
+        genre: l.genre || "misc",
       })),
     };
     const ok = await mutate((d) => ({ ...d, expenses: [...d.expenses, expense] }));
     setSaving(false);
     if (ok) {
       setStore("");
-      setLines([{ name: "", amount: "", owner: "home" }]);
+      setLines([emptyLine()]);
       setMsg("");
       onSaved();
     } else {
@@ -313,7 +393,7 @@ function InputTab({ data, mutate, onSaved }) {
   return (
     <div>
       <div style={S.card}>
-        <div style={S.label}>日付と支払い元</div>
+        <div style={S.label}>日付とカード</div>
         <input
           type="date"
           value={date}
@@ -322,32 +402,24 @@ function InputTab({ data, mutate, onSaved }) {
         />
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {data.cards.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => setCardId(c.id)}
-              style={S.chip(cardId === c.id, "#1B2430", "#EEF1F5")}
-            >
+            <button key={c.id} onClick={() => setCardId(c.id)} style={S.chip(cardId === c.id, INK, "#FFF3CF")}>
               {c.name}
             </button>
           ))}
         </div>
         <input
-          placeholder="お店・支払い先（例: 無印良品）"
+          placeholder="お店・支払い先（任意）"
           value={store}
           onChange={(e) => setStore(e.target.value)}
           style={{ ...S.input, marginTop: 10 }}
         />
         {storeSuggestions.length > 0 && (
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
+          <div style={{ display: "flex", gap: 6, overflowX: "auto", marginTop: 8, paddingBottom: 2, WebkitOverflowScrolling: "touch" }}>
             {storeSuggestions.map((s) => (
               <button
                 key={s}
                 onClick={() => setStore(s)}
-                style={{
-                  ...S.chip(store === s, "#1B2430", "#EEF1F5"),
-                  padding: "5px 12px",
-                  fontSize: 13,
-                }}
+                style={{ ...S.chip(store === s, INK, "#FFF3CF"), padding: "5px 12px", fontSize: 13, flexShrink: 0 }}
               >
                 {s}
               </button>
@@ -357,15 +429,31 @@ function InputTab({ data, mutate, onSaved }) {
       </div>
 
       <div style={S.card}>
-        <div style={S.label}>内訳 — 1レシートを負担者ごとに分けられます</div>
+        <div style={S.label}>内訳 — ジャンルを選んで金額を入れるだけでOK</div>
         {lines.map((l, i) => (
           <div
             key={i}
-            style={{ border: "1px solid #EBEEF2", borderRadius: 14, padding: 12, marginBottom: 8, background: "#FBFCFD" }}
+            style={{ border: "2px solid #E4EAF2", borderRadius: 16, padding: 12, marginBottom: 10, background: "#FBFDFF" }}
           >
+            <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4, marginBottom: 8, WebkitOverflowScrolling: "touch" }}>
+              {GENRES.map((g) => (
+                <button
+                  key={g.id}
+                  onClick={() => setLine(i, { genre: g.id })}
+                  style={{
+                    ...S.chip(l.genre === g.id, g.color, g.bg),
+                    padding: "5px 11px",
+                    fontSize: 13,
+                    flexShrink: 0,
+                  }}
+                >
+                  {g.emoji} {g.label}
+                </button>
+              ))}
+            </div>
             <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
               <input
-                placeholder="品名"
+                placeholder="品名（任意）"
                 value={l.name}
                 onChange={(e) => setLine(i, { name: e.target.value })}
                 style={{ ...S.input, flex: 1, padding: "8px 10px", fontSize: 15 }}
@@ -382,10 +470,7 @@ function InputTab({ data, mutate, onSaved }) {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <OwnerChips value={l.owner} onChange={(v) => setLine(i, { owner: v })} size="sm" />
               {lines.length > 1 && (
-                <button
-                  onClick={() => removeLine(i)}
-                  style={{ border: "none", background: "none", color: "#B04444", fontSize: 13, cursor: "pointer" }}
-                >
+                <button onClick={() => removeLine(i)} style={{ ...S.dangerBtn, border: "none", background: "none", padding: "4px 8px" }}>
                   削除
                 </button>
               )}
@@ -396,37 +481,32 @@ function InputTab({ data, mutate, onSaved }) {
           onClick={addLine}
           style={{
             width: "100%",
-            background: "#F1F4F8",
-            border: "1.5px dashed #C9D2DD",
-            borderRadius: 12,
-            padding: "9px 0",
+            background: "#F2F7FC",
+            border: "2px dashed #B9C8DA",
+            borderRadius: 14,
+            padding: "10px 0",
             fontSize: 14,
-            fontWeight: 600,
-            color: "#4A5665",
+            fontWeight: 700,
+            color: "#5A6B82",
             cursor: "pointer",
           }}
         >
           ＋ 行を追加
         </button>
 
-        {data.presets.length === 0 && (
-          <div style={{ fontSize: 12, color: "#9AA3B0", marginTop: 12 }}>
-            💡 繰り返し入力する項目（家賃・光熱費など）は「設定」タブでプリセット登録すると、ここにワンタップボタンが並びます。
-          </div>
-        )}
         {data.presets.length > 0 && (
           <React.Fragment>
             <div style={{ ...S.label, marginTop: 14 }}>よく使う項目（タップで追加）</div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {data.presets.map((p) => {
-                const o = ownerOf(p.owner);
+                const g = genreOf(p.genre);
                 return (
                   <button
                     key={p.id}
                     onClick={() => addPreset(p)}
-                    style={{ ...S.chip(false, o.color, o.bg), borderColor: o.bg, background: o.bg, color: o.color }}
+                    style={{ ...S.chip(true, g.color, g.bg), fontSize: 13, padding: "5px 12px" }}
                   >
-                    {p.name}
+                    {g.emoji} {p.name}
                     {p.amount > 0 ? " " + fmtYen(p.amount) : ""}
                   </button>
                 );
@@ -437,13 +517,13 @@ function InputTab({ data, mutate, onSaved }) {
       </div>
 
       <div style={{ ...S.card, marginBottom: 12 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
-          <span style={{ fontSize: 14, color: "#5A6472" }}>合計</span>
-          <span style={{ ...S.num, fontSize: 22, fontWeight: 800 }}>{fmtYen(total)}</span>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <span style={{ fontSize: 14, fontWeight: 700, color: "#5A6B82" }}>合計</span>
+          <span style={{ ...S.num, fontSize: 24, fontWeight: 800 }}>{fmtYen(total)}</span>
         </div>
-        {msg && <div style={{ color: "#B04444", fontSize: 13, marginBottom: 8 }}>{msg}</div>}
+        {msg && <div style={{ color: "#C24A4A", fontSize: 13, marginBottom: 8, fontWeight: 700 }}>{msg}</div>}
         <button onClick={save} disabled={saving} style={{ ...S.btnPrimary, opacity: saving ? 0.6 : 1 }}>
-          {saving ? "保存中…" : "記録する"}
+          {saving ? "保存中…" : "記録する ✨"}
         </button>
       </div>
     </div>
@@ -452,11 +532,46 @@ function InputTab({ data, mutate, onSaved }) {
 
 // ---------- 履歴タブ ----------
 function HistoryTab({ data, mutate }) {
+  const now = new Date();
+  const months = useMemo(() => {
+    const arr = [];
+    for (let i = 0; i < 3; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      arr.push({ key: `${d.getFullYear()}-${d.getMonth() + 1}`, y: d.getFullYear(), m: d.getMonth(), label: `${d.getMonth() + 1}月` });
+    }
+    return arr;
+  }, []);
+  const [monthKey, setMonthKey] = useState(months[0].key);
+  const [genreFilter, setGenreFilter] = useState(null);
   const [openId, setOpenId] = useState(null);
-  const sorted = useMemo(
-    () => [...data.expenses].sort((a, b) => (a.date < b.date ? 1 : -1)),
-    [data.expenses]
+
+  const sel = months.find((mo) => mo.key === monthKey) || months[0];
+
+  const monthExpenses = useMemo(
+    () =>
+      data.expenses
+        .filter((e) => {
+          const [ey, em] = e.date.split("-").map(Number);
+          return ey === sel.y && em - 1 === sel.m;
+        })
+        .sort((a, b) => (a.date < b.date ? 1 : -1)),
+    [data.expenses, sel]
   );
+
+  // ジャンル別合計
+  const genreTotals = useMemo(() => {
+    const t = {};
+    monthExpenses.forEach((e) => e.lines.forEach((l) => (t[l.genre] = (t[l.genre] || 0) + l.amount)));
+    return t;
+  }, [monthExpenses]);
+  const monthTotal = Object.values(genreTotals).reduce((s, v) => s + v, 0);
+
+  const shown = genreFilter
+    ? monthExpenses
+        .map((e) => ({ ...e, lines: e.lines.filter((l) => l.genre === genreFilter) }))
+        .filter((e) => e.lines.length > 0)
+    : monthExpenses;
+
   const cardName = (id) => {
     const c = data.cards.find((c) => c.id === id);
     return c ? c.name : "不明";
@@ -464,27 +579,83 @@ function HistoryTab({ data, mutate }) {
   const del = async (id) => {
     await mutate((d) => ({ ...d, expenses: d.expenses.filter((e) => e.id !== id) }));
   };
-  const delLine = async (expId, idx) => {
+  const delLine = async (expId, targetLine) => {
     await mutate((d) => ({
       ...d,
       expenses: d.expenses
-        .map((e) =>
-          e.id === expId ? { ...e, lines: e.lines.filter((_, j) => j !== idx) } : e
-        )
+        .map((e) => {
+          if (e.id !== expId) return e;
+          const idx = e.lines.findIndex(
+            (l) => l.name === targetLine.name && l.amount === targetLine.amount && l.owner === targetLine.owner && l.genre === targetLine.genre
+          );
+          return { ...e, lines: e.lines.filter((_, j) => j !== idx) };
+        })
         .filter((e) => e.lines.length > 0),
     }));
   };
 
-  if (sorted.length === 0)
-    return (
-      <div style={{ ...S.card, textAlign: "center", color: "#7A8494", padding: 32 }}>
-        まだ記録がありません。「入力」タブから最初の支出を記録しましょう。
-      </div>
-    );
-
   return (
     <div>
-      {sorted.map((e) => {
+      {/* 月切り替え */}
+      <div style={{ display: "flex", gap: 8, margin: "14px 14px 0" }}>
+        {months.map((mo) => (
+          <button
+            key={mo.key}
+            onClick={() => {
+              setMonthKey(mo.key);
+              setGenreFilter(null);
+            }}
+            style={{ ...S.chip(monthKey === mo.key, INK, YELLOW), flex: 1, padding: "9px 0", fontWeight: 800 }}
+          >
+            {mo.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ジャンル別合計 */}
+      <div style={S.card}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+          <div style={S.label}>ジャンル別合計（{sel.label}）</div>
+          <div style={{ ...S.num, fontSize: 18, fontWeight: 800 }}>{fmtYen(monthTotal)}</div>
+        </div>
+        {monthTotal === 0 ? (
+          <div style={{ fontSize: 13, color: "#8A93A3", textAlign: "center", padding: "10px 0" }}>この月の記録はまだありません</div>
+        ) : (
+          GENRES.filter((g) => genreTotals[g.id] > 0).map((g) => (
+            <button
+              key={g.id}
+              onClick={() => setGenreFilter(genreFilter === g.id ? null : g.id)}
+              style={{
+                width: "100%",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "9px 10px",
+                marginBottom: 6,
+                border: genreFilter === g.id ? `2px solid ${g.color}` : "2px solid transparent",
+                background: g.bg,
+                borderRadius: 12,
+                cursor: "pointer",
+                fontSize: 14,
+              }}
+            >
+              <span style={{ fontWeight: 800, color: g.color }}>
+                {g.emoji} {g.label}
+                {genreFilter === g.id ? " （絞り込み中）" : ""}
+              </span>
+              <span style={{ ...S.num, fontWeight: 800, color: g.color }}>{fmtYen(genreTotals[g.id])}</span>
+            </button>
+          ))
+        )}
+        {genreFilter && (
+          <button onClick={() => setGenreFilter(null)} style={{ ...S.dangerBtn, border: "2px solid #D8E2EE", background: "#F7FAFD", color: "#5A6B82", width: "100%", padding: "8px 0", marginTop: 2 }}>
+            絞り込みを解除
+          </button>
+        )}
+      </div>
+
+      {/* 明細リスト */}
+      {shown.map((e) => {
         const total = e.lines.reduce((s, l) => s + l.amount, 0);
         const open = openId === e.id;
         return (
@@ -501,91 +672,72 @@ function HistoryTab({ data, mutate }) {
                 alignItems: "center",
                 cursor: "pointer",
                 textAlign: "left",
+                fontFamily: "inherit",
+                color: INK,
               }}
             >
               <div>
-                <div style={{ fontSize: 15, fontWeight: 700 }}>
-                  {e.store || "（店名なし）"}
-                  <span style={{ marginLeft: 8, display: "inline-flex", gap: 3 }}>
-                    {[...new Set(e.lines.map((l) => l.owner))].map((o) => (
-                      <OwnerDot key={o} owner={o} />
-                    ))}
-                  </span>
+                <div style={{ fontSize: 15, fontWeight: 800, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                  {e.store || genreOf(e.lines[0].genre).emoji + " " + genreOf(e.lines[0].genre).label}
+                  {[...new Set(e.lines.map((l) => l.owner))].map((o) => (
+                    <OwnerDot key={o} owner={o} />
+                  ))}
                 </div>
-                <div style={{ fontSize: 12, color: "#7A8494", marginTop: 3 }}>
+                <div style={{ fontSize: 12, color: "#7A8698", marginTop: 3, fontWeight: 700 }}>
                   {fmtMD(e.date)}・{cardName(e.cardId)}
                 </div>
               </div>
               <div style={{ ...S.num, fontSize: 17, fontWeight: 800 }}>{fmtYen(total)}</div>
             </button>
             {open && (
-              <div style={{ borderTop: "1px solid #EEF1F5", padding: "10px 14px 14px" }}>
+              <div style={{ borderTop: "2px solid #EEF2F7", padding: "10px 14px 14px" }}>
                 {e.lines.map((l, i) => (
-                  <div
-                    key={i}
-                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 0", fontSize: 14 }}
-                  >
-                    <span>
-                      <OwnerDot owner={l.owner} /> <span style={{ marginLeft: 6 }}>{l.name}</span>
+                  <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", fontSize: 14 }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                      <GenreTag genre={l.genre} />
+                      <OwnerDot owner={l.owner} />
+                      {l.name && <span style={{ fontWeight: 700 }}>{l.name}</span>}
                     </span>
                     <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <span style={S.num}>{fmtYen(l.amount)}</span>
+                      <span style={{ ...S.num, fontWeight: 800 }}>{fmtYen(l.amount)}</span>
                       <button
-                        onClick={() => delLine(e.id, i)}
+                        onClick={() => delLine(e.id, l)}
                         aria-label="この行を削除"
-                        style={{
-                          border: "1px solid #E4C7C7",
-                          background: "#FBF1F1",
-                          color: "#B04444",
-                          borderRadius: 6,
-                          width: 26,
-                          height: 26,
-                          fontSize: 13,
-                          lineHeight: "24px",
-                          cursor: "pointer",
-                          padding: 0,
-                        }}
+                        style={{ ...S.dangerBtn, width: 26, height: 26, borderRadius: 8, padding: 0, lineHeight: "22px" }}
                       >
                         ✕
                       </button>
                     </span>
                   </div>
                 ))}
-                <button
-                  onClick={() => del(e.id)}
-                  style={{
-                    marginTop: 8,
-                    border: "1px solid #E4C7C7",
-                    background: "#FBF1F1",
-                    color: "#B04444",
-                    borderRadius: 8,
-                    padding: "6px 14px",
-                    fontSize: 13,
-                    cursor: "pointer",
-                  }}
-                >
-                  この記録を削除
+                <button onClick={() => del(e.id)} style={{ ...S.dangerBtn, marginTop: 8, padding: "7px 14px" }}>
+                  この記録をまるごと削除
                 </button>
               </div>
             )}
           </div>
         );
       })}
+      {shown.length === 0 && monthTotal > 0 && (
+        <div style={{ ...S.card, textAlign: "center", color: "#8A93A3", padding: 24, fontSize: 13 }}>該当する記録がありません</div>
+      )}
+      <div style={{ height: 12 }} />
     </div>
   );
 }
 
 // ---------- 精算タブ ----------
 const navBtn = {
-  border: "1px solid rgba(20,30,50,0.1)",
+  border: `2px solid ${INK}`,
   background: "#fff",
   borderRadius: 12,
   width: 38,
   height: 38,
   fontSize: 18,
   cursor: "pointer",
-  color: "#1B2430",
-  boxShadow: "0 2px 6px -2px rgba(16,24,40,0.15)",
+  color: INK,
+  fontWeight: 800,
+  boxShadow: "3px 3px 0 rgba(34,50,74,0.15)",
 };
 
 function SettleTab({ data, mutate }) {
@@ -613,13 +765,19 @@ function SettleTab({ data, mutate }) {
     return { card, p, sums };
   });
 
-  let wifeOwes = 0,
-    iOwe = 0;
+  // 集計: 家は折半
+  let home = 0, ken = 0, misa = 0, paidK = 0, paidM = 0;
   perCard.forEach(({ card, sums }) => {
-    if (card.cardOwner === "me") wifeOwes += sums.wife;
-    else iOwe += sums.home + sums.me;
+    home += sums.home;
+    ken += sums.me;
+    misa += sums.wife;
+    if (card.cardOwner === "me") paidK += sums.total;
+    else paidM += sums.total;
   });
-  const net = wifeOwes - iOwe;
+  const kenBurden = ken + home / 2;
+  const misaBurden = misa + home / 2;
+  // みさが払うべき額 − みさが実際にカードで払った額（プラスなら みさ→けんと）
+  const transfer = misaBurden - paidM;
 
   const toggleSettled = () =>
     mutate((d) => ({
@@ -627,9 +785,19 @@ function SettleTab({ data, mutate }) {
       settlements: { ...d.settlements, [key]: !d.settlements[key] },
     }));
 
+  const Row = ({ label, left, right, strong }) => (
+    <div style={{ display: "flex", justifyContent: "space-between", padding: "7px 0", fontSize: strong ? 15 : 14, fontWeight: strong ? 800 : 700, borderTop: strong ? `2px solid ${INK}` : "1px dashed #E0E6EE" }}>
+      <span style={{ color: strong ? INK : "#5A6B82" }}>{label}</span>
+      <span style={{ ...S.num, display: "flex", gap: 14 }}>
+        <span style={{ color: "#2E7CD6" }}>{left}</span>
+        <span style={{ color: "#E0508F" }}>{right}</span>
+      </span>
+    </div>
+  );
+
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 18, margin: "14px 0 2px" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 18, margin: "16px 0 2px" }}>
         <button onClick={() => shift(-1)} style={navBtn}>‹</button>
         <div style={{ fontSize: 16, fontWeight: 800 }}>
           {ym.y}年{ym.m + 1}月 請求分
@@ -637,65 +805,76 @@ function SettleTab({ data, mutate }) {
         <button onClick={() => shift(1)} style={navBtn}>›</button>
       </div>
 
+      {/* 精算ヒーロー */}
       <div
         style={{
           ...S.card,
           background: settled
-            ? "linear-gradient(160deg, #2F5C44 0%, #3C6E51 100%)"
-            : net >= 0
-            ? "linear-gradient(160deg, #161D28 0%, #2A3550 100%)"
-            : "linear-gradient(160deg, #45182B 0%, #5A2440 100%)",
-          border: "none",
+            ? "linear-gradient(160deg, #2F7A4C 0%, #3C9E62 100%)"
+            : `linear-gradient(160deg, ${INK} 0%, #2E4A7A 100%)`,
           color: "#fff",
           textAlign: "center",
           padding: "24px 16px",
         }}
       >
-        <div style={{ fontSize: 12, letterSpacing: "0.14em", opacity: 0.8 }}>
-          {settled ? "✓ 精算済み" : net >= 0 ? "みさに請求する額" : "みさに支払う額"}
+        <div style={{ fontSize: 12, letterSpacing: "0.14em", opacity: 0.85, fontWeight: 700 }}>
+          {settled ? "✓ 精算済み" : transfer >= 0 ? "みさ → けんと に払う額" : "けんと → みさ に払う額"}
         </div>
-        <div style={{ ...S.num, fontSize: 40, fontWeight: 800, margin: "6px 0 4px", letterSpacing: "-0.02em" }}>
-          {fmtYen(Math.abs(net))}
+        <div style={{ ...S.num, fontSize: 42, fontWeight: 800, margin: "6px 0 4px", color: settled ? "#fff" : "#FFD84D" }}>
+          {fmtYen(Math.abs(transfer))}
         </div>
-        <div style={{ fontSize: 12, opacity: 0.65, marginBottom: 14 }}>
-          けんとのカード上のみさ負担 {fmtYen(wifeOwes)} − みさカード上の家・けんと負担 {fmtYen(iOwe)}
+        <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 14, fontWeight: 700 }}>
+          家の分は自動で折半して計算しています
         </div>
         <button
           onClick={toggleSettled}
           style={{
             background: settled ? "rgba(255,255,255,0.15)" : "#fff",
-            color: settled ? "#fff" : "#1B2430",
-            border: settled ? "1.5px solid rgba(255,255,255,0.5)" : "none",
+            color: settled ? "#fff" : INK,
+            border: settled ? "2px solid rgba(255,255,255,0.6)" : `2px solid ${INK}`,
             borderRadius: 999,
-            padding: "9px 24px",
+            padding: "10px 26px",
             fontSize: 14,
-            fontWeight: 700,
+            fontWeight: 800,
             cursor: "pointer",
           }}
         >
-          {settled ? "精算済みを取り消す" : "精算済みにする"}
+          {settled ? "精算済みを取り消す" : "精算済みにする 🎉"}
         </button>
       </div>
 
+      {/* 負担の内訳 */}
+      <div style={S.card}>
+        <div style={S.label}>負担の内訳</div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: ownerOf("home").bg, border: `2px solid ${ownerOf("home").color}`, borderRadius: 12, padding: "10px 12px", marginBottom: 10 }}>
+          <span style={{ fontWeight: 800, color: ownerOf("home").color }}>🏠 家の支出（折半）</span>
+          <span style={{ ...S.num, fontWeight: 800, color: ownerOf("home").color }}>{fmtYen(home)}</span>
+        </div>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 14, fontSize: 12, fontWeight: 800, marginBottom: 4 }}>
+          <span style={{ color: "#2E7CD6" }}>けんと</span>
+          <span style={{ color: "#E0508F" }}>みさ</span>
+        </div>
+        <Row label="家（半分ずつ）" left={fmtYen(home / 2)} right={fmtYen(home / 2)} />
+        <Row label="個人の支出" left={fmtYen(ken)} right={fmtYen(misa)} />
+        <Row label="負担合計" left={fmtYen(kenBurden)} right={fmtYen(misaBurden)} strong />
+        <Row label="カードで支払済み" left={fmtYen(paidK)} right={fmtYen(paidM)} />
+      </div>
+
+      {/* カード別内訳 */}
       {perCard.map(({ card, p, sums }) => (
         <div key={card.id} style={S.card}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-            <div style={{ fontSize: 15, fontWeight: 700 }}>{card.name}</div>
+            <div style={{ fontSize: 15, fontWeight: 800 }}>{card.name}</div>
             <div style={{ ...S.num, fontSize: 16, fontWeight: 800 }}>{fmtYen(sums.total)}</div>
           </div>
-          <div style={{ fontSize: 12, color: "#7A8494", margin: "3px 0 10px" }}>
+          <div style={{ fontSize: 12, color: "#7A8698", margin: "3px 0 10px", fontWeight: 700 }}>
             {fmtMD(p.start)} 〜 {fmtMD(p.end)}（{card.closingDay === 31 ? "月末" : card.closingDay + "日"}締め）
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             {OWNERS.map((o) => (
-              <div
-                key={o.id}
-                style={{ flex: 1, background: o.bg, borderRadius: 12, padding: "9px 0", textAlign: "center" }}
-              >
-                <div style={{ fontSize: 11, fontWeight: 700, color: o.color }}>{o.label}</div>
-                <div style={{ ...S.num, fontSize: 14, fontWeight: 800, color: o.color }}>
-                  {fmtYen(sums[o.id])}
-                </div>
+              <div key={o.id} style={{ flex: 1, background: o.bg, border: `1.5px solid ${o.color}`, borderRadius: 12, padding: "9px 0", textAlign: "center" }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: o.color }}>{o.label}</div>
+                <div style={{ ...S.num, fontSize: 14, fontWeight: 800, color: o.color }}>{fmtYen(sums[o.id])}</div>
               </div>
             ))}
           </div>
@@ -706,12 +885,12 @@ function SettleTab({ data, mutate }) {
   );
 }
 
-// ---------- グラフタブ（軽量CSS積み上げ棒グラフ） ----------
+// ---------- グラフタブ ----------
 function GraphTab({ data }) {
   const chartData = useMemo(() => {
     const now = new Date();
     const months = [];
-    for (let i = 5; i >= 0; i--) {
+    for (let i = 2; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       months.push({ y: d.getFullYear(), m: d.getMonth(), label: `${d.getMonth() + 1}月`, home: 0, me: 0, wife: 0 });
     }
@@ -735,56 +914,47 @@ function GraphTab({ data }) {
     <div>
       <div style={S.card}>
         <div style={S.label}>今月の支出合計（暦月）</div>
-        <div style={{ ...S.num, fontSize: 28, fontWeight: 800 }}>{fmtYen(totalThisMonth)}</div>
+        <div style={{ ...S.num, fontSize: 30, fontWeight: 800 }}>{fmtYen(totalThisMonth)}</div>
       </div>
 
       <div style={S.card}>
-        <div style={S.label}>月別の支出（負担者別・直近6か月）</div>
-        <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: CHART_H, marginTop: 12 }}>
+        <div style={S.label}>月別の支出（負担者別・直近3か月）</div>
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 14, height: CHART_H, marginTop: 12, padding: "0 10px" }}>
           {chartData.map((mo, i) => {
             const total = mo.home + mo.me + mo.wife;
             return (
               <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", height: "100%" }}>
-                <div style={{ ...S.num, fontSize: 10, color: "#7A8494", marginBottom: 4 }}>
+                <div style={{ ...S.num, fontSize: 11, color: "#5A6B82", marginBottom: 4, fontWeight: 800 }}>
                   {total > 0 ? (total >= 10000 ? Math.round(total / 1000) / 10 + "万" : total.toLocaleString()) : ""}
                 </div>
-                <div style={{ flex: 1, width: "100%", maxWidth: 40, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
-                  {["wife", "me", "home"].map((oid, j) => {
-                    const h = (mo[oid] / maxTotal) * (CHART_H - 24);
+                <div style={{ flex: 1, width: "100%", maxWidth: 56, display: "flex", flexDirection: "column", justifyContent: "flex-end", border: total > 0 ? `2px solid ${INK}` : "none", borderBottom: "none", borderRadius: "10px 10px 0 0", overflow: "hidden" }}>
+                  {["wife", "me", "home"].map((oid) => {
+                    const h = (mo[oid] / maxTotal) * (CHART_H - 30);
                     if (h <= 0) return null;
                     const o = ownerOf(oid);
-                    return (
-                      <div
-                        key={oid}
-                        style={{
-                          height: h,
-                          background: o.color,
-                          borderRadius: j === 0 && mo.wife > 0 ? "4px 4px 0 0" : 0,
-                        }}
-                      />
-                    );
+                    return <div key={oid} style={{ height: h, background: o.color }} />;
                   })}
                 </div>
               </div>
             );
           })}
         </div>
-        <div style={{ display: "flex", gap: 10, marginTop: 2 }}>
+        <div style={{ display: "flex", gap: 14, marginTop: 0, padding: "0 10px", borderTop: `2px solid ${INK}` }}>
           {chartData.map((mo, i) => (
-            <div key={i} style={{ flex: 1, textAlign: "center", fontSize: 12, color: "#5A6472", fontWeight: 600 }}>
+            <div key={i} style={{ flex: 1, textAlign: "center", fontSize: 13, color: INK, fontWeight: 800, paddingTop: 6 }}>
               {mo.label}
             </div>
           ))}
         </div>
         <div style={{ display: "flex", justifyContent: "center", gap: 14, marginTop: 12 }}>
           {OWNERS.map((o) => (
-            <span key={o.id} style={{ fontSize: 12, color: "#5A6472", display: "flex", alignItems: "center", gap: 4 }}>
-              <span style={{ width: 10, height: 10, borderRadius: 3, background: o.color, display: "inline-block" }} />
+            <span key={o.id} style={{ fontSize: 12, color: "#5A6B82", display: "flex", alignItems: "center", gap: 4, fontWeight: 700 }}>
+              <span style={{ width: 11, height: 11, borderRadius: 4, background: o.color, display: "inline-block", border: `1.5px solid ${INK}` }} />
               {o.label}
             </span>
           ))}
         </div>
-        <div style={{ fontSize: 11, color: "#9AA3B0", marginTop: 10 }}>
+        <div style={{ fontSize: 11, color: "#8A93A3", marginTop: 10, fontWeight: 700 }}>
           ※グラフは暦月（1日〜月末）で集計。カードの請求額は「精算」タブで締め日どおりに確認できます。
         </div>
       </div>
@@ -794,7 +964,7 @@ function GraphTab({ data }) {
 
 // ---------- 設定タブ ----------
 function SettingsTab({ data, mutate }) {
-  const [newPreset, setNewPreset] = useState({ name: "", amount: "", owner: "home" });
+  const [newPreset, setNewPreset] = useState({ name: "", amount: "", owner: "home", genre: "food" });
 
   const updateCard = (id, patch) =>
     mutate((d) => ({
@@ -804,13 +974,9 @@ function SettingsTab({ data, mutate }) {
   const addCard = () =>
     mutate((d) => ({
       ...d,
-      cards: [
-        ...d.cards,
-        { id: "c" + Date.now(), name: "新しいカード", closingDay: 27, cardOwner: "me" },
-      ],
+      cards: [...d.cards, { id: "c" + Date.now(), name: "新しいカード", closingDay: 27, cardOwner: "me" }],
     }));
-  const removeCard = (id) =>
-    mutate((d) => ({ ...d, cards: d.cards.filter((c) => c.id !== id) }));
+  const removeCard = (id) => mutate((d) => ({ ...d, cards: d.cards.filter((c) => c.id !== id) }));
 
   const addPreset = () => {
     if (!newPreset.name.trim()) return;
@@ -823,31 +989,31 @@ function SettingsTab({ data, mutate }) {
           name: newPreset.name.trim(),
           amount: Number(newPreset.amount) || 0,
           owner: newPreset.owner,
+          genre: newPreset.genre,
         },
       ],
     }));
-    setNewPreset({ name: "", amount: "", owner: "home" });
+    setNewPreset({ name: "", amount: "", owner: "home", genre: "food" });
   };
-  const removePreset = (id) =>
-    mutate((d) => ({ ...d, presets: d.presets.filter((p) => p.id !== id) }));
+  const removePreset = (id) => mutate((d) => ({ ...d, presets: d.presets.filter((p) => p.id !== id) }));
 
   return (
     <div>
       <div style={S.card}>
-        <div style={S.label}>支払い元と締め日</div>
+        <div style={S.label}>カードと締め日</div>
         {data.cards.map((c) => (
-          <div key={c.id} style={{ border: "1px solid #EBEEF2", borderRadius: 14, padding: 12, marginBottom: 8, background: "#FBFCFD" }}>
+          <div key={c.id} style={{ border: "2px solid #E4EAF2", borderRadius: 14, padding: 12, marginBottom: 10, background: "#FBFDFF" }}>
             <input
               value={c.name}
               onChange={(e) => updateCard(c.id, { name: e.target.value })}
               style={{ ...S.input, marginBottom: 8, fontSize: 15, padding: "8px 10px" }}
             />
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <span style={{ fontSize: 13, color: "#5A6472" }}>締め日</span>
+              <span style={{ fontSize: 13, color: "#5A6B82", fontWeight: 700 }}>締め日</span>
               <select
                 value={c.closingDay}
                 onChange={(e) => updateCard(c.id, { closingDay: Number(e.target.value) })}
-                style={{ ...S.input, width: 90, padding: "6px 8px", fontSize: 15 }}
+                style={{ ...S.input, width: 92, padding: "6px 8px", fontSize: 15 }}
               >
                 {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
                   <option key={d} value={d}>
@@ -855,19 +1021,16 @@ function SettingsTab({ data, mutate }) {
                   </option>
                 ))}
               </select>
-              <span style={{ fontSize: 13, color: "#5A6472" }}>名義</span>
+              <span style={{ fontSize: 13, color: "#5A6B82", fontWeight: 700 }}>名義</span>
               <select
                 value={c.cardOwner}
                 onChange={(e) => updateCard(c.id, { cardOwner: e.target.value })}
-                style={{ ...S.input, width: 90, padding: "6px 8px", fontSize: 15 }}
+                style={{ ...S.input, width: 92, padding: "6px 8px", fontSize: 15 }}
               >
                 <option value="me">けんと</option>
                 <option value="wife">みさ</option>
               </select>
-              <button
-                onClick={() => removeCard(c.id)}
-                style={{ marginLeft: "auto", border: "none", background: "none", color: "#B04444", fontSize: 13, cursor: "pointer" }}
-              >
+              <button onClick={() => removeCard(c.id)} style={{ ...S.dangerBtn, border: "none", background: "none", marginLeft: "auto", padding: "4px 8px" }}>
                 削除
               </button>
             </div>
@@ -875,31 +1038,44 @@ function SettingsTab({ data, mutate }) {
         ))}
         <button
           onClick={addCard}
-          style={{ width: "100%", background: "#F1F4F8", border: "1.5px dashed #C6CFDA", borderRadius: 10, padding: "9px 0", fontSize: 14, fontWeight: 600, color: "#4A5665", cursor: "pointer" }}
+          style={{ width: "100%", background: "#F2F7FC", border: "2px dashed #B9C8DA", borderRadius: 14, padding: "10px 0", fontSize: 14, fontWeight: 700, color: "#5A6B82", cursor: "pointer" }}
         >
-          ＋ 支払い元を追加
+          ＋ カードを追加
         </button>
       </div>
 
       <div style={{ ...S.card, marginBottom: 12 }}>
         <div style={S.label}>よく使う項目（プリセット）</div>
-        <div style={{ fontSize: 12, color: "#7A8494", marginBottom: 8 }}>
+        <div style={{ fontSize: 12, color: "#7A8698", marginBottom: 8, fontWeight: 700 }}>
           金額が毎月変わるもの（光熱費など）は金額0で登録すると、入力時に金額だけ打てばOK。
         </div>
         {data.presets.map((p) => (
-          <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 0", fontSize: 14, borderBottom: "1px solid #F0F2F5" }}>
-            <span>
-              <OwnerDot owner={p.owner} /> <span style={{ marginLeft: 6 }}>{p.name}</span>
+          <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", fontSize: 14, borderBottom: "1px dashed #E0E6EE" }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+              <GenreTag genre={p.genre} />
+              <OwnerDot owner={p.owner} />
+              <span style={{ fontWeight: 700 }}>{p.name}</span>
             </span>
             <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={S.num}>{p.amount > 0 ? fmtYen(p.amount) : "金額は入力時"}</span>
-              <button onClick={() => removePreset(p.id)} style={{ border: "none", background: "none", color: "#B04444", fontSize: 13, cursor: "pointer" }}>
+              <span style={{ ...S.num, fontWeight: 800 }}>{p.amount > 0 ? fmtYen(p.amount) : "金額は入力時"}</span>
+              <button onClick={() => removePreset(p.id)} style={{ ...S.dangerBtn, border: "none", background: "none", padding: "4px 6px" }}>
                 削除
               </button>
             </span>
           </div>
         ))}
-        <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+        <div style={{ display: "flex", gap: 6, overflowX: "auto", marginTop: 10, paddingBottom: 4, WebkitOverflowScrolling: "touch" }}>
+          {GENRES.map((g) => (
+            <button
+              key={g.id}
+              onClick={() => setNewPreset((s) => ({ ...s, genre: g.id }))}
+              style={{ ...S.chip(newPreset.genre === g.id, g.color, g.bg), padding: "5px 11px", fontSize: 13, flexShrink: 0 }}
+            >
+              {g.emoji} {g.label}
+            </button>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
           <input
             placeholder="品名"
             value={newPreset.name}
@@ -916,35 +1092,13 @@ function SettingsTab({ data, mutate }) {
           />
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
-          <OwnerChips
-            value={newPreset.owner}
-            onChange={(v) => setNewPreset((s) => ({ ...s, owner: v }))}
-            size="sm"
-          />
+          <OwnerChips value={newPreset.owner} onChange={(v) => setNewPreset((s) => ({ ...s, owner: v }))} size="sm" />
           <button
             onClick={addPreset}
-            style={{ background: "#1B2430", color: "#fff", border: "none", borderRadius: 8, padding: "7px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}
+            style={{ background: YELLOW, color: INK, border: `2px solid ${INK}`, borderRadius: 10, padding: "7px 18px", fontSize: 13, fontWeight: 800, cursor: "pointer", boxShadow: "3px 3px 0 rgba(34,50,74,0.2)" }}
           >
             追加
           </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ---------- セットアップ未完了画面 ----------
-function SetupScreen() {
-  return (
-    <div style={{ ...S.page, padding: 20, boxSizing: "border-box" }}>
-      <div style={{ ...S.card, margin: "40px 0 0" }}>
-        <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 10 }}>あと少しで完成です</div>
-        <div style={{ fontSize: 14, lineHeight: 1.8, color: "#3A4452" }}>
-          index.html の先頭にある <b>CONFIG</b> に、Supabase の <b>Project URL</b> と{" "}
-          <b>anon public キー</b>がまだ設定されていません。
-          <br />
-          <br />
-          README-setup.md の手順3を見て、GitHub 上で index.html を編集し、2つの値を貼り付けてください。
         </div>
       </div>
     </div>
@@ -959,7 +1113,6 @@ function App() {
   const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
-    if (!configured()) return;
     loadData()
       .then(setData)
       .catch(() => {
@@ -980,12 +1133,10 @@ function App() {
     setTimeout(() => setToast(""), 2000);
   };
 
-  if (!configured()) return <SetupScreen />;
-
   if (!data)
     return (
       <div style={{ ...S.page, display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
-        <div style={{ color: "#7A8494", fontSize: 14 }}>読み込み中…</div>
+        <div style={{ color: "#7A8698", fontSize: 14, fontWeight: 700 }}>読み込み中…</div>
       </div>
     );
 
@@ -1002,33 +1153,53 @@ function App() {
       <header style={{ padding: "calc(env(safe-area-inset-top, 0px) + 14px) 14px 0" }}>
         <div
           style={{
-            background: "linear-gradient(135deg, #161D28 0%, #2A3550 100%)",
-            borderRadius: 20,
-            padding: "14px 16px",
+            background: `linear-gradient(135deg, #FFD84D 0%, ${YELLOW} 100%)`,
+            border: `2.5px solid ${INK}`,
+            borderRadius: 22,
+            padding: "13px 16px",
             display: "flex",
             alignItems: "center",
             gap: 12,
-            boxShadow: "0 14px 30px -16px rgba(16,24,40,0.5)",
+            boxShadow: "6px 6px 0 rgba(34,50,74,0.2)",
           }}
         >
-          <img src="icon-192.png" alt="" style={{ width: 42, height: 42, borderRadius: 12 }} />
+          <div
+            aria-hidden
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: 13,
+              background: INK,
+              border: `2px solid ${INK}`,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            <span style={{ color: "#fff", fontWeight: 800, fontSize: 20, lineHeight: 1 }}>U</span>
+            <span style={{ display: "flex", gap: 2.5, marginTop: 3 }}>
+              <span style={{ width: 6, height: 4, borderRadius: 2, background: "#5BD07A" }} />
+              <span style={{ width: 6, height: 4, borderRadius: 2, background: "#6FAFF5" }} />
+              <span style={{ width: 6, height: 4, borderRadius: 2, background: "#F58BBE" }} />
+            </span>
+          </div>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: "0.02em", color: "#FFFFFF" }}>
-              Uchi-no-Kakei
-            </div>
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", marginTop: 2 }}>
-              締め日どおりに集計・1レシートを負担者で分割
+            <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: "0.02em", color: INK }}>Uchi-no-Kakei</div>
+            <div style={{ fontSize: 11, color: "rgba(34,50,74,0.65)", marginTop: 2, fontWeight: 700 }}>
+              締め日どおりに集計 ✦ レシートを負担者で分割
             </div>
           </div>
         </div>
       </header>
       {loadError && (
-        <div style={{ fontSize: 12, color: "#B04444", padding: "4px 16px" }}>
+        <div style={{ fontSize: 12, color: "#C24A4A", padding: "8px 18px 0", fontWeight: 700 }}>
           データの読み込みに失敗したため、初期状態で表示しています。電波状況を確認して再読み込みしてください。
         </div>
       )}
 
-      {tab === "input" && <InputTab data={data} mutate={mutate} onSaved={() => showToast("記録しました")} />}
+      {tab === "input" && <InputTab data={data} mutate={mutate} onSaved={() => showToast("記録しました 🎉")} />}
       {tab === "history" && <HistoryTab data={data} mutate={mutate} />}
       {tab === "settle" && <SettleTab data={data} mutate={mutate} />}
       {tab === "graph" && <GraphTab data={data} />}
@@ -1038,17 +1209,19 @@ function App() {
         <div
           style={{
             position: "fixed",
-            bottom: "calc(env(safe-area-inset-bottom, 0px) + 78px)",
+            bottom: "calc(env(safe-area-inset-bottom, 0px) + 84px)",
             left: "50%",
             transform: "translateX(-50%)",
-            background: "#1B2430",
+            background: INK,
             color: "#fff",
             borderRadius: 999,
-            padding: "9px 20px",
+            border: "2px solid #fff",
+            padding: "10px 22px",
             fontSize: 14,
-            fontWeight: 600,
-            boxShadow: "0 4px 14px rgba(0,0,0,0.2)",
+            fontWeight: 800,
+            boxShadow: "0 6px 18px rgba(0,0,0,0.25)",
             zIndex: 20,
+            whiteSpace: "nowrap",
           }}
         >
           {toast}
@@ -1063,12 +1236,10 @@ function App() {
           right: 14,
           maxWidth: 452,
           margin: "0 auto",
-          background: "rgba(255,255,255,0.88)",
-          backdropFilter: "blur(16px)",
-          WebkitBackdropFilter: "blur(16px)",
-          border: "1px solid rgba(20,30,50,0.08)",
+          background: "#FFFFFF",
+          border: `2.5px solid ${INK}`,
           borderRadius: 999,
-          boxShadow: "0 16px 36px -16px rgba(16,24,40,0.4)",
+          boxShadow: "5px 5px 0 rgba(34,50,74,0.2)",
           display: "flex",
           padding: 5,
           zIndex: 10,
@@ -1083,11 +1254,12 @@ function App() {
               padding: "11px 0",
               border: "none",
               borderRadius: 999,
-              background: tab === t.id ? "#1B2430" : "transparent",
-              color: tab === t.id ? "#FFFFFF" : "#6A7382",
+              background: tab === t.id ? YELLOW : "transparent",
+              color: tab === t.id ? INK : "#8A93A3",
               fontSize: 13,
-              fontWeight: 700,
+              fontWeight: 800,
               cursor: "pointer",
+              fontFamily: "inherit",
             }}
           >
             {t.label}
